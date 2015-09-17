@@ -1,28 +1,16 @@
+package view;
+
 import edu.uci.ics.jung.algorithms.layout.CircleLayout;
 import edu.uci.ics.jung.algorithms.layout.Layout;
 import edu.uci.ics.jung.graph.Graph;
 import edu.uci.ics.jung.visualization.BasicVisualizationServer;
 import edu.uci.ics.jung.visualization.decorators.ToStringLabeller;
 import edu.uci.ics.jung.visualization.renderers.Renderer;
-import loader.GraphLoader;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.IOException;
 
-public class GraphTest {
-    public static void main(String args[]) {
-        GraphLoader<Integer, String> graphLoader = new GraphLoader<>();
-
-        try {
-            Graph<Integer, String> graph = graphLoader.createGraphFromFile("/Users/zach/IdeaProjects/QuasiThresholdMover/karate.paj");
-            showGraph(graph);
-        } catch (IOException e) {
-            System.out.println("Unable to load graph!");
-            e.printStackTrace();
-        }
-    }
-
+public class GraphViewer {
     public static void showGraph(Graph<?,?> graph) {
         // The Layout<V, E> is parameterized by the vertex and edge types
         Layout<Integer, String> layout = new CircleLayout(graph);
