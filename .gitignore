@@ -1,1 +1,2 @@
-*.iml
+/qtm/*.iml
+/.idea/libraries/**
