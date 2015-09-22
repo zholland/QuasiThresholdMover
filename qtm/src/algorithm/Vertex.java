@@ -1,6 +1,6 @@
 package algorithm;
 
-public class Vertex<T> {
+public class Vertex<T extends Comparable<T>> implements Comparable<Vertex<T>> {
     T _id;
     Integer _degree;
     Vertex _parent;
@@ -43,5 +43,14 @@ public class Vertex<T> {
     @Override
     public int hashCode() {
         return _id.hashCode();
+    }
+
+    @Override
+    public int compareTo(Vertex<T> o) {
+        return _id.compareTo(o.getId());
+    }
+
+    public static <V extends Comparable<V>> Vertex<V> createVertex(V id, int degree) {
+        return new Vertex<>(id, degree);
     }
 }

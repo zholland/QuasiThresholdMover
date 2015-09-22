@@ -12,7 +12,7 @@ public class QtmTester {
         GraphLoader<Integer, String> graphLoader = new GraphLoader<>();
         try {
             Graph<Integer, String> graph = graphLoader.createGraphFromFile(args[0]);
-            QuasiThresholdMover qtm = new QuasiThresholdMover(graph);
+            QuasiThresholdMover<Integer> qtm = new QuasiThresholdMover<>(graph, Integer.MAX_VALUE);
             Graph<Integer, String> resultGraph = qtm.doQuasiThresholdMover();
 
             GraphViewer.showGraph(resultGraph);

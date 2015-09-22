@@ -17,7 +17,7 @@ public class GraphTest {
         GraphLoader<Integer, String> graphLoader = new GraphLoader<>();
 
         try {
-            Graph<Integer, String> graph = graphLoader.createGraphFromFile("/Users/zach/IdeaProjects/QuasiThresholdMover/qtm/graphs/karate.paj");
+            Graph<Integer, String> graph = graphLoader.createGraphFromFile(args[0]);
             showGraph(graph);
         } catch (IOException e) {
             System.out.println("Unable to load graph!");

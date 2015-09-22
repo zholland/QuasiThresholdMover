@@ -8,7 +8,7 @@ import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class QuasiThresholdMover<T> {
+public class QuasiThresholdMover<T extends Comparable<T>> {
     private PriorityQueue<Vertex<T>> _verticies;
     private Graph<T, String> _graph;
     private Vertex<T> _root;
@@ -20,23 +20,22 @@ public class QuasiThresholdMover<T> {
 
     private void initialize() {
         // TODO: Use bucket-sort
-        _verticies = new PriorityQueue<>(_graph.getVertexCount(), (Vertex<T> v1, Vertex<T> v2) -> v2.getDegree().compareTo(v1.getDegree()));
+        _verticies = new PriorityQueue<>();
 
-        T t = new T();
-
-//        _graph.addVertex(Integer.MAX_VALUE);
+        // Add root to every vertex
+        _graph.addVertex(_root.getId());
         _graph.getVertices().stream()
-//                .filter(id -> id != Integer.MAX_VALUE)
+                .filter(v -> !v.equals(_root.getId()))
                 .forEach(id -> {
-                    _graph.addEdge(Integer.MAX_VALUE + "-" + id, Integer.MAX_VALUE, id);
-                    _verticies.add(new Vertex(id, _graph.inDegree(id), null));
+                    _graph.addEdge(_root.getId() + "-" + id, _root.getId(), id);
+                    _verticies.add(new Vertex<>(id, _graph.getNeighborCount(id), _root));
                 });
-//        _verticies.add(new Vertex(Integer.MAX_VALUE, _graph.inDegree(Integer.MAX_VALUE)));
+
     }
 
     public Graph<Integer, String> doQuasiThresholdMover() {
         initialize();
-
-        return _graph;
+        return null;
+        //return _graph;
     }
 }
