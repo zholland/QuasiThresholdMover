@@ -1,27 +1,37 @@
 package datastructures;
 
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Queue;
+import java.util.function.Consumer;
 
-public class BucketSortQueue<E> implements Queue<E> {
+public class BucketSortQueue<E> implements Serializable, Queue<E>, Iterable<E> {
+    private ArrayList<ArrayList<E>> _arrayList;
+    private int _size = 0;
+
+
     public BucketSortQueue(int maxValue) {
-
+        _arrayList = new ArrayList<>(maxValue);
+        for (int i = 0; i < maxValue; i++) {
+            _arrayList.add(null);
+        }
     }
 
     @Override
     public int size() {
-        return 0;
+        return _size;
     }
 
     @Override
     public boolean isEmpty() {
-        return false;
+        return _size == 0;
     }
 
     @Override
     public boolean contains(Object o) {
-        return false;
+        return _arrayList.stream().anyMatch(l -> l != null && l.contains(0));
     }
 
     @Override
@@ -97,5 +107,31 @@ public class BucketSortQueue<E> implements Queue<E> {
     @Override
     public E peek() {
         return null;
+    }
+
+    private class BucketSortQueueIterator<E> implements Iterator<E> {
+
+        private int _bucket;
+        private int _bucketPosition;
+
+        @Override
+        public boolean hasNext() {
+            return false;
+        }
+
+        @Override
+        public E next() {
+            return null;
+        }
+
+        @Override
+        public void remove() {
+
+        }
+
+        @Override
+        public void forEachRemaining(Consumer<? super E> action) {
+
+        }
     }
 }
