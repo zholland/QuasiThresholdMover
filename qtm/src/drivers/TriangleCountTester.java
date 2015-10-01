@@ -1,8 +1,8 @@
 package drivers;
 
 import algorithm.Edge;
-import algorithm.QuasiThresholdMover;
 import algorithm.TriangleCounter;
+import algorithm.Vertex;
 import edu.uci.ics.jung.graph.Graph;
 import edu.uci.ics.jung.graph.SparseGraph;
 import loader.GraphLoader;
@@ -13,20 +13,22 @@ import java.io.IOException;
 public class TriangleCountTester {
     public static void main(String args[]) {
         try {
-            Graph<Integer, Edge<String>> graph = GraphLoader.createGraphFromFile(args[0]);
+            Graph<Vertex<Integer>, Edge<String>> graph = GraphLoader.createGraphFromFile(args[0]);
             TriangleCounter<Integer> tc = new TriangleCounter<>(graph);
-            System.out.println(tc.countTriangles(1, 2));
 
             graph = new SparseGraph<>();
-            graph.addVertex(1);
-            graph.addVertex(2);
-            graph.addVertex(3);
+            Vertex<Integer> v1 = new Vertex<>(1);
+            Vertex<Integer> v2 = new Vertex<>(2);
+            Vertex<Integer> v3 = new Vertex<>(3);
+            graph.addVertex(v1);
+            graph.addVertex(v2);
+            graph.addVertex(v3);
             //graph.addVertex(4);
-            graph.addEdge(new Edge<>("1-2"), 1, 2);
-            graph.addEdge(new Edge<>("2-3"), 2, 3);
-            graph.addEdge(new Edge<>("3-1"), 3, 1);
-            //graph.addEdge(new Edge<>("4-1"), 4, 1);
-            //graph.addEdge(new Edge<>("4-2"), 4, 2);
+            graph.addEdge(new Edge<>("1-2"), v1, v2);
+            graph.addEdge(new Edge<>("2-3"), v2, v3);
+            graph.addEdge(new Edge<>("3-1"), v3, v1);
+//            graph.addEdge(new Edge<>("4-1"), 4, 1);
+//            graph.addEdge(new Edge<>("4-2"), 4, 2);
 
             TriangleCounter.countAllTriangles(graph);
             graph.getEdges().forEach(e -> System.out.println(e.toString() + ": " + e.getNumTriangles()));

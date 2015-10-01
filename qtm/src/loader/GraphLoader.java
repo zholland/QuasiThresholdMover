@@ -1,6 +1,7 @@
 package loader;
 
 import algorithm.Edge;
+import algorithm.Vertex;
 import edu.uci.ics.jung.graph.Graph;
 import edu.uci.ics.jung.graph.SparseGraph;
 
@@ -8,7 +9,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -17,8 +20,8 @@ import java.util.stream.Stream;
 
 public class GraphLoader {
 
-    public static Graph<Integer, Edge<String>> createGraphFromFile(String fileLocation) throws IOException {
-        Graph<Integer, Edge<String>> graph = new SparseGraph<>();
+    public static Graph<Vertex<Integer>, Edge<String>> createGraphFromFile(String fileLocation) throws IOException {
+        Graph<Vertex<Integer>, Edge<String>> graph = new SparseGraph<>();
         Path path = Paths.get(fileLocation);
 
         Stream<String> lines = Files.lines(path);
@@ -30,8 +33,13 @@ public class GraphLoader {
                     return m.matches();
                 })
                 .collect(Collectors.toList());
+
+        Map<Integer, Vertex<Integer>> vertexMap = new HashMap<>(vertexStringLines.size());
+
         for (int i = 1; i <= vertexStringLines.size(); i++) {
-            graph.addVertex(i);
+            Vertex<Integer> v = new Vertex<>(i);
+            vertexMap.put(i, v);
+            graph.addVertex(v);
         }
 
         lines = Files.lines(path);
@@ -47,8 +55,10 @@ public class GraphLoader {
             StringTokenizer st = new StringTokenizer(line);
             String v1 = st.nextToken();
             String v2 = st.nextToken();
-            graph.addEdge(new Edge<>(v1 + "-" + v2), Integer.valueOf(v1), Integer.valueOf(v2));
+            graph.addEdge(new Edge<>(v1 + "-" + v2), vertexMap.get(Integer.valueOf(v1)), vertexMap.get(Integer.valueOf(v2)));
         }
+
+        graph.getVertices().forEach(v -> v.setDegree(graph.degree(v)));
 
         return graph;
     }

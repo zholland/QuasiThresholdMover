@@ -3,7 +3,9 @@ package algorithm;
 public class Vertex<T extends Comparable<T>> implements Comparable<Vertex<T>> {
     private T _id;
     private Integer _degree;
-    private Vertex _parent;
+
+    private int _depth = 0;
+    private Vertex<T> _parent;
 
     public Vertex(T id) {
         this(id, -1);
@@ -27,12 +29,24 @@ public class Vertex<T extends Comparable<T>> implements Comparable<Vertex<T>> {
         return _degree;
     }
 
-    public Vertex getParent() {
+    public void setDegree(Integer degree) {
+        _degree = degree;
+    }
+
+    public Vertex<T> getParent() {
         return _parent;
     }
 
-    public void setParent(Vertex parent) {
+    public void setParent(Vertex<T> parent) {
         _parent = parent;
+    }
+
+    public int getDepth() {
+        return _depth;
+    }
+
+    public void setDepth(int depth) {
+        _depth = depth;
     }
 
     @Override
