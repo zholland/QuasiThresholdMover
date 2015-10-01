@@ -1,5 +1,6 @@
 package loader;
 
+import algorithm.Edge;
 import edu.uci.ics.jung.graph.Graph;
 import edu.uci.ics.jung.graph.SparseGraph;
 
@@ -14,10 +15,10 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class GraphLoader<V, E> {
+public class GraphLoader {
 
-    public Graph<Integer, String> createGraphFromFile(String fileLocation) throws IOException {
-        Graph<Integer, String> graph = new SparseGraph<>();
+    public static Graph<Integer, Edge<String>> createGraphFromFile(String fileLocation) throws IOException {
+        Graph<Integer, Edge<String>> graph = new SparseGraph<>();
         Path path = Paths.get(fileLocation);
 
         Stream<String> lines = Files.lines(path);
@@ -46,7 +47,7 @@ public class GraphLoader<V, E> {
             StringTokenizer st = new StringTokenizer(line);
             String v1 = st.nextToken();
             String v2 = st.nextToken();
-            graph.addEdge(v1 + "-" + v2, Integer.valueOf(v1), Integer.valueOf(v2));
+            graph.addEdge(new Edge<>(v1 + "-" + v2), Integer.valueOf(v1), Integer.valueOf(v2));
         }
 
         return graph;

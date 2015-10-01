@@ -1,9 +1,13 @@
 package algorithm;
 
 public class Vertex<T extends Comparable<T>> implements Comparable<Vertex<T>> {
-    T _id;
-    Integer _degree;
-    Vertex _parent;
+    private T _id;
+    private Integer _degree;
+    private Vertex _parent;
+
+    public Vertex(T id) {
+        this(id, -1);
+    }
 
     public Vertex(T id, int degree) {
         this(id, degree, null);
@@ -50,7 +54,8 @@ public class Vertex<T extends Comparable<T>> implements Comparable<Vertex<T>> {
         return _id.compareTo(o.getId());
     }
 
-    public static <V extends Comparable<V>> Vertex<V> createVertex(V id, int degree) {
-        return new Vertex<>(id, degree);
+    @Override
+    public String toString() {
+        return _id.toString();
     }
 }

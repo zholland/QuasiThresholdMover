@@ -4,13 +4,15 @@ import edu.uci.ics.jung.graph.Graph;
 
 import java.util.HashSet;
 import java.util.PriorityQueue;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-public class QuasiThresholdMover<T extends Comparable<T>> {
-    private PriorityQueue<Vertex<T>> _vertexQueue;
-    private Graph<T, String> _graph;
-    private Vertex<T> _root;
+public class QuasiThresholdMover<V extends Comparable<V>> {
+    private PriorityQueue<Vertex<V>> _vertexQueue;
+    private Graph<V, Edge<String>> _graph;
+    private Vertex<V> _root;
 
-    public QuasiThresholdMover(Graph<T, String> graph, T root) {
+    public QuasiThresholdMover(Graph<V, Edge<String>> graph, V root) {
         _graph = graph;
         _root = new Vertex<>(root, 0, null);
     }
@@ -24,15 +26,17 @@ public class QuasiThresholdMover<T extends Comparable<T>> {
         _graph.getVertices().stream()
                 .filter(v -> !v.equals(_root.getId()))
                 .forEach(id -> {
-                    _graph.addEdge(_root.getId() + "-" + id, _root.getId(), id);
-                    _vertexQueue.add(new Vertex<>(id, _graph.getNeighborCount(id), _root));
+                    _graph.addEdge(new Edge<>(_root.getId() + "-" + id), _root.getId(), id);
+                    _vertexQueue.add(new Vertex<>(id, _graph.getNeighborCount(id), null));
                 });
 
-        HashSet<Vertex<T>> processed = new HashSet<>(_vertexQueue.size());
+        TriangleCounter.countAllTriangles(_graph);
+
+        HashSet<Vertex<V>> processed = new HashSet<>(_vertexQueue.size());
         while (!_vertexQueue.isEmpty()) {
-            Vertex<T> current = _vertexQueue.poll();
+            Vertex<V> current = _vertexQueue.poll();
             processed.add(current);
-            Vertex<T> tempParent;
+            Vertex<V> tempParent;
         }
     }
 
