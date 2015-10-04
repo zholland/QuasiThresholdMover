@@ -5,6 +5,7 @@ import algorithm.QuasiThresholdMover;
 import algorithm.Vertex;
 import edu.uci.ics.jung.graph.Graph;
 import loader.GraphLoader;
+import view.GraphViewer;
 
 import java.io.IOException;
 
@@ -15,7 +16,7 @@ public class QtmTester {
             QuasiThresholdMover<Integer> qtm = new QuasiThresholdMover<>(graph, Integer.MAX_VALUE);
             Graph<Integer, String> resultGraph = qtm.doQuasiThresholdMover();
 
-            //GraphViewer.showGraph(resultGraph);
+            GraphViewer.showGraph(resultGraph);
         } catch (IOException e) {
             System.out.println("Unable to load graph!");
             e.printStackTrace();

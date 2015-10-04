@@ -1,11 +1,15 @@
 package algorithm;
 
+import java.util.Set;
+import java.util.TreeSet;
+
 public class Vertex<T extends Comparable<T>> implements Comparable<Vertex<T>> {
     private T _id;
     private Integer _degree;
 
     private int _depth = 0;
     private Vertex<T> _parent;
+    private Set<Vertex<T>> _children;
 
     public Vertex(T id) {
         this(id, -1);
@@ -19,6 +23,7 @@ public class Vertex<T extends Comparable<T>> implements Comparable<Vertex<T>> {
         _id = id;
         _degree = degree;
         _parent = parent;
+        _children = new TreeSet<>();
     }
 
     public T getId() {
@@ -39,6 +44,18 @@ public class Vertex<T extends Comparable<T>> implements Comparable<Vertex<T>> {
 
     public void setParent(Vertex<T> parent) {
         _parent = parent;
+    }
+
+    public void addChild(Vertex<T> child) {
+        _children.add(child);
+    }
+
+    public void removeChild(Vertex<T> child) {
+        _children.remove(child);
+    }
+
+    public Set<Vertex<T>> getChildren() {
+        return _children;
     }
 
     public int getDepth() {
