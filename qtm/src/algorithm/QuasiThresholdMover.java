@@ -22,17 +22,10 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
 
     private void initialize() {
         // TODO: Use bucket-sort
-        _vertexQueue = new PriorityQueue<>((Vertex<V> v1, Vertex<V> v2) -> {
-            if (v1.getDegree() > v2.getDegree()) {
-                return -1;
-            } else if (v1.getDegree() < v2.getDegree()) {
-                return 1;
-            } else {
-                return 0;
-            }
-        });
+        _vertexQueue = new PriorityQueue<>((v1, v2) -> v2.getDegree() - v1.getDegree());
 
         // Add root to every vertex
+        _root.setParent(_root);
         _graph.addVertex(_root);
         _graph.getVertices().stream()
                 .filter(v -> !v.equals(_root))
@@ -72,9 +65,9 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
             Optional<Map.Entry<Vertex<V>, Integer>> optionalEntry = parentOccurrences.entrySet().stream().max((e1, e2) -> e1.getValue().compareTo(e2.getValue()));
             Vertex<V> tempParent = optionalEntry.isPresent() ? optionalEntry.get().getKey() : null;
 
-            if (tempParent != null && current.getParent() != null && !tempParent.equals(current.getParent())) {
+            if (tempParent != null && !tempParent.equals(current.getParent())) {
                 changeParent(current, tempParent);
-                current.setDepth(tempParent.getDepth() + 1);
+                current.setDepth(0);
                 pc.setToInfinity(current, tempParent);
             }
 
@@ -101,7 +94,9 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
     }
 
     private void core(Vertex<V> vm) {
-        Queue<Vertex<V>> queue = new LinkedList<>(_graph.getNeighbors(vm));
+        int degreeVm = _graph.degree(vm);
+        Queue<Vertex<V>> queue = new PriorityQueue<>(degreeVm, (v1, v2) -> v2.getDepth() - v1.getDepth()); // I don't think there will be an overflow.
+        queue.addAll(_graph.getNeighbors(vm));
         _childCloseMap = queue.stream().collect(Collectors.toMap(v -> v, v -> 0));
         _scoreMaxMap = queue.stream().collect(Collectors.toMap(v -> v, v -> -1));
         _dfs = queue.stream().collect(Collectors.toMap(v -> v, v -> v));
@@ -116,15 +111,16 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
 
             // TODO: Need to add marker to allow adjacency in G to be checked in constant time...
             if (_graph.getNeighbors(vm).contains(u)) {
-                setChildClose(u, childClose(u) + 2);
-                setScoreMax(u, scoreMax(u) + 2);
+                setChildClose(u, childClose(u) + 1);
+                setScoreMax(u, scoreMax(u) + 1);
+            } else {
+                setChildClose(u, childClose(u) - 1);
+                setScoreMax(u, scoreMax(u) - 1);
             }
-            setChildClose(u, childClose(u) - 1);
-            setScoreMax(u, scoreMax(u) - 1);
 
             if (!u.getChildren().isEmpty() && childClose(u) >= 0) {
-                Iterator<Vertex<V>> siblingIterator = u.getChildren().iterator();
-                Vertex<V> x = siblingIterator.next();
+                Vertex<V> x = u.getChildren().get(0);
+                u.getNextChildIndex();
                 while (x != u) {
                     if (!touched.contains(x) || childClose(x) < 0) {
                         setChildClose(u, childClose(u) - 1);
@@ -133,9 +129,15 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
                             setDfs(u, x);
                             break;
                         }
-                        //x = x.getChildren().
+                        // Next node in DFS order after x below u.
+                        if (x.getNextChildIndex() < x.getChildren().size()) { // TODO: Bad code!!!
+                            x = x.getChildren().get(x.getNextChildIndex());
+                        } else {
+                            x = x.getParent().getChildren().get(x.getParent().getNextChildIndex());
+                        }
                     } else {
-                        x = siblingIterator.next();
+                        // Next node in DFS order after the subtree of x below u.
+                        x = u.getChildren().get(u.getNextChildIndex());
                     }
                 }
             }
@@ -154,20 +156,39 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
         }
     }
 
-    public Graph<V, String> doQuasiThresholdMover() {
+    public Graph<V, String> doQuasiThresholdMover(boolean showTransitiveClosures) {
         initialize();
-//        _graph.getVertices()
-//                .stream()
-//                .filter(vm -> vm != _root)
-//                .forEach(vm -> {
-//                    changeParent(vm, _root);
-//                    core(vm);
-//                });
-        return buildQtGraph();
+        for (int i = 0; i < 4; i++) {
+            _graph.getVertices()
+                    .stream()
+                    .filter(vm -> vm != _root)
+                    .forEach(vm -> {
+                        Vertex<V> oldParent = vm.getParent();
+                        ArrayList<Vertex<V>> oldChildren = vm.getChildren();
+                        changeParent(vm, _root);
+                        vm.setDepth(1);
+                        vm.getChildren().forEach(this::decreaseChildrenDepth);
+                        vm.setChildren(new ArrayList<>());
+                        core(vm);
+
+                        int foo = 1;
+                    });
+        }
+        return buildQtGraph(showTransitiveClosures);
+    }
+
+    private void decreaseChildrenDepth(Vertex<V> v) {
+        v.setDepth(v.getDepth() - 1);
+        v.getChildren().forEach(this::decreaseChildrenDepth);
     }
 
     private int childClose(Vertex<V> u) {
-        return _childCloseMap.get(u);
+        Integer childClose = _childCloseMap.get(u);
+        if (childClose == null) {
+            childClose = 0;
+            setChildClose(u, childClose);
+        }
+        return childClose;
     }
 
     private void setChildClose(Vertex<V> u, int newChildClose) {
@@ -175,7 +196,12 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
     }
 
     private int scoreMax(Vertex<V> u) {
-        return _scoreMaxMap.get(u);
+        Integer scoreMax = _scoreMaxMap.get(u);
+        if (scoreMax == null) {
+            scoreMax = -1;
+            setScoreMax(u, scoreMax);
+        }
+        return scoreMax;
     }
 
     private void setScoreMax(Vertex<V> u, int newScoreMax) {
@@ -183,48 +209,55 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
     }
 
     private Vertex<V> dfs(Vertex<V> u) {
-        return _dfs.get(u);
+        Vertex<V> v = _dfs.get(u);
+        if (v == null) {
+            v = u;
+            setDfs(u, v);
+        }
+        return v;
     }
 
     private void setDfs(Vertex<V> u, Vertex<V> newValue) {
         _dfs.put(u, newValue);
     }
 
-    private int getChildCloseScore(Vertex<V> vm, Vertex<V> u) {
-        Set<Vertex<V>> uSubtree = new TreeSet<>();
-        getSubtree(u, uSubtree);
-        int vmNeighborsCount = (int)_graph.getNeighbors(vm).stream()
-                .filter(uSubtree::contains)
-                .count();
-        return vmNeighborsCount - (uSubtree.size() - vmNeighborsCount);
-    }
+//    private int getChildCloseScore(Vertex<V> vm, Vertex<V> u) {
+//        Set<Vertex<V>> uSubtree = new TreeSet<>();
+//        getSubtree(u, uSubtree);
+//        int vmNeighborsCount = (int)_graph.getNeighbors(vm).stream()
+//                .filter(uSubtree::contains)
+//                .count();
+//        return vmNeighborsCount - (uSubtree.size() - vmNeighborsCount);
+//    }
+//
+//
+//    private void getSubtree(Vertex<V> v, Set<Vertex<V>> subtree) {
+//        subtree.add(v);
+//
+//        if (v.getChildren() != null && !v.getChildren().isEmpty()) {
+//            v.getChildren().stream().forEach(c -> getSubtree(c, subtree));
+//        }
+//    }
 
-
-    private void getSubtree(Vertex<V> v, Set<Vertex<V>> subtree) {
-        subtree.add(v);
-
-        if (v.getChildren() != null && !v.getChildren().isEmpty()) {
-            v.getChildren().stream().forEach(c -> getSubtree(c, subtree));
-        }
-    }
-
-    private Graph<V, String> buildQtGraph() {
+    private Graph<V, String> buildQtGraph(boolean showTransitiveClosures) {
         Graph<V, String> returnGraph = new SparseGraph<>();
 
-        _root.getChildren().stream().forEach(v -> {
-            Set<Vertex<V>> ancestors = new HashSet<>();
-            addEdges(v, ancestors, returnGraph);
-        });
-
-//        _graph.getVertices()
-//                .stream()
-//                .filter(v -> v != _root)
-//                .forEach(v -> {
-//                    returnGraph.addVertex(v.getId());
-//                    if (v.getParent() != null && v.getParent() != _root) {
-//                        returnGraph.addEdge(v.getId() + "-" + v.getParent().getId(), v.getId(), v.getParent().getId());
-//                    }
-//                });
+        if (showTransitiveClosures) {
+            _root.getChildren().stream().forEach(v -> {
+                Set<Vertex<V>> ancestors = new HashSet<>();
+                addEdges(v, ancestors, returnGraph);
+            });
+        } else {
+            _graph.getVertices()
+                    .stream()
+                    .filter(v -> v != _root)
+                    .forEach(v -> {
+                        returnGraph.addVertex(v.getId());
+                        if (v.getParent() != null && v.getParent() != _root) {
+                            returnGraph.addEdge(v.getId() + "-" + v.getParent().getId(), v.getId(), v.getParent().getId());
+                        }
+                    });
+        }
         return returnGraph;
     }
 
@@ -232,8 +265,9 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
         returnGraph.addVertex(v.getId());
         ancestors.stream().forEach(a -> returnGraph.addEdge(a.getId() + "-" + v.getId(), a.getId(), v.getId()));
         if (!v.getChildren().isEmpty()) {
-            ancestors.add(v);
-            v.getChildren().stream().forEach(c -> addEdges(c, ancestors, returnGraph));
+            Set<Vertex<V>> newAncestors = new HashSet<>(ancestors);
+            newAncestors.add(v);
+            v.getChildren().stream().forEach(c -> addEdges(c, newAncestors, returnGraph));
         }
     }
 }

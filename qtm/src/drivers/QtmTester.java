@@ -14,7 +14,7 @@ public class QtmTester {
         try {
             Graph<Vertex<Integer>, Edge<String>> graph = GraphLoader.createGraphFromFile(args[0]);
             QuasiThresholdMover<Integer> qtm = new QuasiThresholdMover<>(graph, Integer.MAX_VALUE);
-            Graph<Integer, String> resultGraph = qtm.doQuasiThresholdMover();
+            Graph<Integer, String> resultGraph = qtm.doQuasiThresholdMover(false);
 
             GraphViewer.showGraph(resultGraph);
         } catch (IOException e) {
