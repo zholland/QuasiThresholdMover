@@ -11,12 +11,13 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
     private Graph<Vertex<V>, Edge<String>> _graph;
     private Vertex<V> _root;
 
-    private Map<Vertex<V>, Map<Vertex<V>, Integer>> _childCloseMap;
+    private Map<Vertex<V>, Integer> _childCloseMap;
+    private Map<Vertex<V>, Integer> _scoreMaxMap;
+    private Map<Vertex<V>, Vertex<V>> _dfs;
 
     public QuasiThresholdMover(Graph<Vertex<V>, Edge<String>> graph, V root) {
         _graph = graph;
-        _root = new Vertex<>(root, graph.getVertexCount(), null);
-        _childCloseMap = new HashMap<>();
+        _root = new Vertex<>(root, graph.getVertexCount(), null, 0);
     }
 
     private void initialize() {
@@ -37,6 +38,7 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
                 .filter(v -> !v.equals(_root))
                 .forEach(v -> {
                     v.setParent(_root);
+                    v.setDepth(1);
                     _root.addChild(v);
                     _graph.addEdge(new Edge<>(_root.getId() + "-" + v.getId()), _root, v);
                     _vertexQueue.add(v);
@@ -70,9 +72,9 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
             Optional<Map.Entry<Vertex<V>, Integer>> optionalEntry = parentOccurrences.entrySet().stream().max((e1, e2) -> e1.getValue().compareTo(e2.getValue()));
             Vertex<V> tempParent = optionalEntry.isPresent() ? optionalEntry.get().getKey() : null;
 
-            if (!Objects.equals(tempParent, current.getParent())) {
+            if (tempParent != null && current.getParent() != null && !tempParent.equals(current.getParent())) {
                 changeParent(current, tempParent);
-                current.setDepth(tempParent == null ? 0 : tempParent.getDepth() + 1);
+                current.setDepth(tempParent.getDepth() + 1);
                 pc.setToInfinity(current, tempParent);
             }
 
@@ -100,33 +102,55 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
 
     private void core(Vertex<V> vm) {
         Queue<Vertex<V>> queue = new LinkedList<>(_graph.getNeighbors(vm));
+        _childCloseMap = queue.stream().collect(Collectors.toMap(v -> v, v -> 0));
+        _scoreMaxMap = queue.stream().collect(Collectors.toMap(v -> v, v -> -1));
+        _dfs = queue.stream().collect(Collectors.toMap(v -> v, v -> v));
         while (!queue.isEmpty()) {
             Vertex<V> u = queue.poll();
             HashSet<Vertex<V>> touched = new HashSet<>();
             touched.add(u);
 
-            if (childClose(vm, u) > scoreMax(vm, u)) {
-                // scoreMax(u) <- childClose(u);
+            if (childClose(u) > scoreMax(u)) {
+                setScoreMax(u, childClose(u));
             }
 
-            if (/*u is marked as neighbor*/true) {
-                // childClose(u) <- childClose(u) + 2;
-                // scoreMax(u) <- scoreMax(u) + 2;
+            // TODO: Need to add marker to allow adjacency in G to be checked in constant time...
+            if (_graph.getNeighbors(vm).contains(u)) {
+                setChildClose(u, childClose(u) + 2);
+                setScoreMax(u, scoreMax(u) + 2);
             }
-            // childClose(u) <- childClose(u) - 1;
-            // scoreMax(u) <- scoreMax(u) - 1;
+            setChildClose(u, childClose(u) - 1);
+            setScoreMax(u, scoreMax(u) - 1);
 
-            if (!u.getChildren().isEmpty() && childClose(vm, u) >= 0) {
-                u.getChildren().stream().findAny().ifPresent(x -> {
-                    while (x != u) {
-                        if (!touched.contains(x) || childClose(vm, x) < 0) {
-                            setChildClose(vm, u, childClose(vm, u) - 1);
-                            x = u;
+            if (!u.getChildren().isEmpty() && childClose(u) >= 0) {
+                Iterator<Vertex<V>> siblingIterator = u.getChildren().iterator();
+                Vertex<V> x = siblingIterator.next();
+                while (x != u) {
+                    if (!touched.contains(x) || childClose(x) < 0) {
+                        setChildClose(u, childClose(u) - 1);
+                        x = dfs(x);
+                        if (childClose(u) < 0) {
+                            setDfs(u, x);
+                            break;
                         }
+                        //x = x.getChildren().
+                    } else {
+                        x = siblingIterator.next();
                     }
-                });
+                }
             }
 
+            if (!u.equals(_root)) {
+                if (childClose(u) > 0) {
+                    setChildClose(u.getParent(), childClose(u.getParent()) + childClose(u));
+                    queue.add(u.getParent());
+                }
+
+                if (scoreMax(u) > scoreMax(u.getParent())) {
+                    setScoreMax(u.getParent(), scoreMax(u));
+                    queue.add(u.getParent());
+                }
+            }
         }
     }
 
@@ -142,20 +166,28 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
         return buildQtGraph();
     }
 
-    private int childClose(Vertex<V> vm, Vertex<V> u) {
-        Map<Vertex<V>, Integer> neighborMap = _childCloseMap.get(vm);
-        if (neighborMap == null) {
-            neighborMap = new TreeMap<>();
-            _childCloseMap.put(vm, neighborMap);
-        }
+    private int childClose(Vertex<V> u) {
+        return _childCloseMap.get(u);
+    }
 
-        Integer childCloseScore = neighborMap.get(u);
-        if (childCloseScore == null) {
-            childCloseScore = getChildCloseScore(vm, u);
-            neighborMap.put(u, childCloseScore);
-        }
+    private void setChildClose(Vertex<V> u, int newChildClose) {
+        _childCloseMap.put(u, newChildClose);
+    }
 
-        return childCloseScore;
+    private int scoreMax(Vertex<V> u) {
+        return _scoreMaxMap.get(u);
+    }
+
+    private void setScoreMax(Vertex<V> u, int newScoreMax) {
+        _scoreMaxMap.put(u, newScoreMax);
+    }
+
+    private Vertex<V> dfs(Vertex<V> u) {
+        return _dfs.get(u);
+    }
+
+    private void setDfs(Vertex<V> u, Vertex<V> newValue) {
+        _dfs.put(u, newValue);
     }
 
     private int getChildCloseScore(Vertex<V> vm, Vertex<V> u) {
@@ -167,6 +199,7 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
         return vmNeighborsCount - (uSubtree.size() - vmNeighborsCount);
     }
 
+
     private void getSubtree(Vertex<V> v, Set<Vertex<V>> subtree) {
         subtree.add(v);
 
@@ -175,33 +208,32 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
         }
     }
 
-    private void setChildClose(Vertex<V> vm, Vertex<V> u, int newChildClose) {
-        Map<Vertex<V>, Integer> neighborMap = _childCloseMap.get(vm);
-        if (neighborMap == null) {
-            neighborMap = new TreeMap<>();
-            _childCloseMap.put(vm, neighborMap);
-        }
-
-        neighborMap.put(u, newChildClose);
-    }
-
-    private int scoreMax(Vertex<V> vm, Vertex<V> u) {
-        return 0;
-    }
-
     private Graph<V, String> buildQtGraph() {
         Graph<V, String> returnGraph = new SparseGraph<>();
 
-        _graph.getVertices()
-                .stream()
-                .filter(v -> v != _root)
-                .forEach(v -> {
-                    returnGraph.addVertex(v.getId());
-                    v.getChildren()
-                            .stream()
-                            .forEach(u -> returnGraph.addEdge(v.getId() + "-" + u.getId(), v.getId(), u.getId()));
-                });
+        _root.getChildren().stream().forEach(v -> {
+            Set<Vertex<V>> ancestors = new HashSet<>();
+            addEdges(v, ancestors, returnGraph);
+        });
 
+//        _graph.getVertices()
+//                .stream()
+//                .filter(v -> v != _root)
+//                .forEach(v -> {
+//                    returnGraph.addVertex(v.getId());
+//                    if (v.getParent() != null && v.getParent() != _root) {
+//                        returnGraph.addEdge(v.getId() + "-" + v.getParent().getId(), v.getId(), v.getParent().getId());
+//                    }
+//                });
         return returnGraph;
+    }
+
+    private void addEdges(Vertex<V> v, Set<Vertex<V>> ancestors, Graph<V, String> returnGraph) {
+        returnGraph.addVertex(v.getId());
+        ancestors.stream().forEach(a -> returnGraph.addEdge(a.getId() + "-" + v.getId(), a.getId(), v.getId()));
+        if (!v.getChildren().isEmpty()) {
+            ancestors.add(v);
+            v.getChildren().stream().forEach(c -> addEdges(c, ancestors, returnGraph));
+        }
     }
 }

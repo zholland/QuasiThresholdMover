@@ -7,7 +7,7 @@ public class Vertex<T extends Comparable<T>> implements Comparable<Vertex<T>> {
     private T _id;
     private Integer _degree;
 
-    private int _depth = 0;
+    private int _depth = -1;
     private Vertex<T> _parent;
     private Set<Vertex<T>> _children;
 
@@ -16,13 +16,14 @@ public class Vertex<T extends Comparable<T>> implements Comparable<Vertex<T>> {
     }
 
     public Vertex(T id, int degree) {
-        this(id, degree, null);
+        this(id, degree, null, -1);
     }
 
-    public Vertex(T id, int degree, Vertex<T> parent) {
+    public Vertex(T id, int degree, Vertex<T> parent, int depth) {
         _id = id;
         _degree = degree;
         _parent = parent;
+        _depth = depth;
         _children = new TreeSet<>();
     }
 
