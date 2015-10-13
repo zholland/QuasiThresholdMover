@@ -3,7 +3,16 @@ package algorithm;
 import edu.uci.ics.jung.graph.Graph;
 import edu.uci.ics.jung.graph.SparseGraph;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.PriorityQueue;
+import java.util.Queue;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 public class QuasiThresholdMover<V extends Comparable<V>> {
@@ -12,7 +21,8 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
     private Vertex<V> _root;
 
     private Map<Vertex<V>, Integer> _childCloseMap;
-    private Map<Vertex<V>, Integer> _scoreMaxMap;
+    private Map<Vertex<V>, Integer> _dfsNextChildIndexMap;
+    private Map<Vertex<V>, ScoreMaxPair> _scoreMaxMap;
     private Map<Vertex<V>, Vertex<V>> _dfs;
 
     public QuasiThresholdMover(Graph<Vertex<V>, Edge<String>> graph, V root) {
@@ -97,12 +107,13 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
         int degreeVm = _graph.degree(vm);
         Queue<Vertex<V>> queue = new PriorityQueue<>(degreeVm, (v1, v2) -> v2.getDepth() - v1.getDepth()); // I don't think there will be an overflow.
         queue.addAll(_graph.getNeighbors(vm));
+        _dfsNextChildIndexMap = queue.stream().collect(Collectors.toMap(v -> v, v -> 0));
         _childCloseMap = queue.stream().collect(Collectors.toMap(v -> v, v -> 0));
-        _scoreMaxMap = queue.stream().collect(Collectors.toMap(v -> v, v -> -1));
+        _scoreMaxMap = queue.stream().collect(Collectors.toMap(v -> v, v -> new ScoreMaxPair(v, -1)));
         _dfs = queue.stream().collect(Collectors.toMap(v -> v, v -> v));
+        HashSet<Vertex<V>> touched = new HashSet<>();
         while (!queue.isEmpty()) {
             Vertex<V> u = queue.poll();
-            HashSet<Vertex<V>> touched = new HashSet<>();
             touched.add(u);
 
             if (childClose(u) > scoreMax(u)) {
@@ -112,7 +123,7 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
             // TODO: Need to add marker to allow adjacency in G to be checked in constant time...
             if (_graph.getNeighbors(vm).contains(u)) {
                 setChildClose(u, childClose(u) + 1);
-                setScoreMax(u, scoreMax(u) + 1);
+                setScoreMax(u, new ScoreMaxPair(u, scoreMax(u) + 1));
             } else {
                 setChildClose(u, childClose(u) - 1);
                 setScoreMax(u, scoreMax(u) - 1);
@@ -120,7 +131,7 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
 
             if (!u.getChildren().isEmpty() && childClose(u) >= 0) {
                 Vertex<V> x = u.getChildren().get(0);
-                u.getNextChildIndex();
+                getNextChildIndex(u, true);
                 while (x != u) {
                     if (!touched.contains(x) || childClose(x) < 0) {
                         setChildClose(u, childClose(u) - 1);
@@ -130,14 +141,10 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
                             break;
                         }
                         // Next node in DFS order after x below u.
-                        if (x.getNextChildIndex() < x.getChildren().size()) { // TODO: Bad code!!!
-                            x = x.getChildren().get(x.getNextChildIndex());
-                        } else {
-                            x = x.getParent().getChildren().get(x.getParent().getNextChildIndex());
-                        }
+                        x = getNextNodeInDfs(x);
                     } else {
                         // Next node in DFS order after the subtree of x below u.
-                        x = u.getChildren().get(u.getNextChildIndex());
+                        x = u.getChildren().get(getNextChildIndex(u, true));
                     }
                 }
             }
@@ -149,15 +156,40 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
                 }
 
                 if (scoreMax(u) > scoreMax(u.getParent())) {
-                    setScoreMax(u.getParent(), scoreMax(u));
+                    setScoreMax(u.getParent(), scoreMaxPair(u));
                     queue.add(u.getParent());
                 }
             }
         }
     }
 
+    private Vertex<V> getNextNodeInDfs(Vertex<V> x) {
+        if (getNextChildIndex(x, false) < x.getChildren().size()) {
+            return x.getChildren().get(getNextChildIndex(x, true));
+        } else {
+            return getNextNodeInDfs(x.getParent());
+        }
+    }
+
+    private int getNextChildIndex(Vertex<V> v, boolean increment) {
+        Integer index = _dfsNextChildIndexMap.get(v);
+        if (index == null) {
+            index = 0;
+        }
+        if (increment) {
+            _dfsNextChildIndexMap.put(v, index + 1);
+        }
+        return index;
+    }
+
+    private void computeDepths(Vertex<V> v, int depth) {
+        v.setDepth(depth);
+        v.getChildren().forEach(c -> computeDepths(c, depth + 1));
+    }
+
     public Graph<V, String> doQuasiThresholdMover(boolean showTransitiveClosures) {
         initialize();
+        computeDepths(_root, 0);
         for (int i = 0; i < 4; i++) {
             _graph.getVertices()
                     .stream()
@@ -169,9 +201,13 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
                         vm.setDepth(1);
                         vm.getChildren().forEach(this::decreaseChildrenDepth);
                         vm.setChildren(new ArrayList<>());
+                        oldParent.getChildren().addAll(oldChildren);
+                        oldChildren.forEach(c -> c.setParent(oldParent));
                         core(vm);
 
-                        int foo = 1;
+                        ScoreMaxPair rootScoreMaxPair = scoreMaxPair(_root);
+                        int scoreMax = rootScoreMaxPair.getScoreMax();
+                        Vertex<V> bestParent = rootScoreMaxPair.getBestParent();
                     });
         }
         return buildQtGraph(showTransitiveClosures);
@@ -195,17 +231,36 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
         _childCloseMap.put(u, newChildClose);
     }
 
-    private int scoreMax(Vertex<V> u) {
-        Integer scoreMax = _scoreMaxMap.get(u);
-        if (scoreMax == null) {
-            scoreMax = -1;
-            setScoreMax(u, scoreMax);
-        }
-        return scoreMax;
+    private Vertex<V> getScoreMaxBestParent(Vertex<V> u) {
+        ScoreMaxPair scoreMaxPair = _scoreMaxMap.get(u);
+        return scoreMaxPair == null ? u : scoreMaxPair.getBestParent();
     }
 
-    private void setScoreMax(Vertex<V> u, int newScoreMax) {
-        _scoreMaxMap.put(u, newScoreMax);
+    private int scoreMax(Vertex<V> u) {
+        ScoreMaxPair scoreMaxPair = _scoreMaxMap.get(u);
+        if (scoreMaxPair == null) {
+            scoreMaxPair = new ScoreMaxPair(u, -1);
+            setScoreMax(u, scoreMaxPair);
+        }
+        return scoreMaxPair.getScoreMax();
+    }
+
+    private ScoreMaxPair scoreMaxPair(Vertex<V> u) {
+        ScoreMaxPair scoreMaxPair = _scoreMaxMap.get(u);
+        if (scoreMaxPair == null) {
+            scoreMaxPair = new ScoreMaxPair(u, -1);
+            setScoreMax(u, scoreMaxPair);
+        }
+        return scoreMaxPair;
+    }
+
+    private void setScoreMax(Vertex<V> u, ScoreMaxPair newScoreMaxPair) {
+        _scoreMaxMap.put(u, newScoreMaxPair);
+    }
+
+    private void setScoreMax(Vertex<V> u, int scoreMax) {
+        Vertex<V> bestParent = getScoreMaxBestParent(u);
+        _scoreMaxMap.put(u, new ScoreMaxPair(bestParent, scoreMax));
     }
 
     private Vertex<V> dfs(Vertex<V> u) {
@@ -268,6 +323,24 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
             Set<Vertex<V>> newAncestors = new HashSet<>(ancestors);
             newAncestors.add(v);
             v.getChildren().stream().forEach(c -> addEdges(c, newAncestors, returnGraph));
+        }
+    }
+
+    private class ScoreMaxPair {
+        private Vertex<V> _bestParent;
+        private int _scoreMax;
+
+        private ScoreMaxPair(Vertex<V> bestParent, int scoreMax) {
+            _bestParent = bestParent;
+            _scoreMax = scoreMax;
+        }
+
+        public Vertex<V> getBestParent() {
+            return _bestParent;
+        }
+
+        public int getScoreMax() {
+            return _scoreMax;
         }
     }
 }
