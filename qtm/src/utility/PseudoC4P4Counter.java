@@ -1,6 +1,8 @@
-package algorithm;
+package utility;
 
 import edu.uci.ics.jung.graph.Graph;
+import structure.Edge;
+import structure.Vertex;
 
 import java.util.HashSet;
 import java.util.Set;

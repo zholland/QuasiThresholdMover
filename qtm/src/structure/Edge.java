@@ -1,4 +1,4 @@
-package algorithm;
+package structure;
 
 public class Edge<T> {
     private T _id;

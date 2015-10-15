@@ -2,35 +2,30 @@ package algorithm;
 
 import edu.uci.ics.jung.graph.Graph;
 import edu.uci.ics.jung.graph.SparseGraph;
+import structure.Edge;
+import structure.Vertex;
+import utility.PseudoC4P4Counter;
+import utility.TriangleCounter;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.PriorityQueue;
-import java.util.Queue;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class QuasiThresholdMover<V extends Comparable<V>> {
-    private PriorityQueue<Vertex<V>> _vertexQueue;
-    private Graph<Vertex<V>, Edge<String>> _graph;
-    private Vertex<V> _root;
+    protected PriorityQueue<Vertex<V>> _vertexQueue;
+    protected Graph<Vertex<V>, Edge<String>> _graph;
+    protected Vertex<V> _root;
 
-    private Map<Vertex<V>, Integer> _childCloseMap;
-    private Map<Vertex<V>, Integer> _dfsNextChildIndexMap;
-    private Map<Vertex<V>, ScoreMaxPair> _scoreMaxMap;
-    private Map<Vertex<V>, Vertex<V>> _dfs;
+    protected Map<Vertex<V>, Integer> _childCloseMap;
+    protected Map<Vertex<V>, Integer> _dfsNextChildIndexMap;
+    protected Map<Vertex<V>, ScoreMaxPair<V>> _scoreMaxMap;
+    protected Map<Vertex<V>, Vertex<V>> _dfs;
 
     public QuasiThresholdMover(Graph<Vertex<V>, Edge<String>> graph, V root) {
         _graph = graph;
         _root = new Vertex<>(root, graph.getVertexCount(), null, 0);
     }
 
-    private void initialize() {
+    protected void initialize() {
         // TODO: Use bucket-sort
         _vertexQueue = new PriorityQueue<>((v1, v2) -> v2.getDegree() - v1.getDegree());
 
@@ -109,7 +104,7 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
         queue.addAll(_graph.getNeighbors(vm));
         _dfsNextChildIndexMap = queue.stream().collect(Collectors.toMap(v -> v, v -> 0));
         _childCloseMap = queue.stream().collect(Collectors.toMap(v -> v, v -> 0));
-        _scoreMaxMap = queue.stream().collect(Collectors.toMap(v -> v, v -> new ScoreMaxPair(v, -1)));
+        _scoreMaxMap = queue.stream().collect(Collectors.toMap((Vertex<V> v) -> v, (Vertex<V> v) -> new ScoreMaxPair<>(v, -1)));
         _dfs = queue.stream().collect(Collectors.toMap(v -> v, v -> v));
         HashSet<Vertex<V>> touched = new HashSet<>();
         while (!queue.isEmpty()) {
@@ -123,7 +118,7 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
             // TODO: Need to add marker to allow adjacency in G to be checked in constant time...
             if (_graph.getNeighbors(vm).contains(u)) {
                 setChildClose(u, childClose(u) + 1);
-                setScoreMax(u, new ScoreMaxPair(u, scoreMax(u) + 1));
+                setScoreMax(u, new ScoreMaxPair<>(u, scoreMax(u) + 1));
             } else {
                 setChildClose(u, childClose(u) - 1);
                 setScoreMax(u, scoreMax(u) - 1);
@@ -205,7 +200,7 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
                         oldChildren.forEach(c -> c.setParent(oldParent));
                         core(vm);
 
-                        ScoreMaxPair rootScoreMaxPair = scoreMaxPair(_root);
+                        ScoreMaxPair<V> rootScoreMaxPair = scoreMaxPair(_root);
                         int scoreMax = rootScoreMaxPair.getScoreMax();
                         Vertex<V> bestParent = rootScoreMaxPair.getBestParent();
                     });
@@ -237,30 +232,30 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
     }
 
     private int scoreMax(Vertex<V> u) {
-        ScoreMaxPair scoreMaxPair = _scoreMaxMap.get(u);
+        ScoreMaxPair<V> scoreMaxPair = _scoreMaxMap.get(u);
         if (scoreMaxPair == null) {
-            scoreMaxPair = new ScoreMaxPair(u, -1);
+            scoreMaxPair = new ScoreMaxPair<>(u, -1);
             setScoreMax(u, scoreMaxPair);
         }
         return scoreMaxPair.getScoreMax();
     }
 
-    private ScoreMaxPair scoreMaxPair(Vertex<V> u) {
-        ScoreMaxPair scoreMaxPair = _scoreMaxMap.get(u);
+    private ScoreMaxPair<V> scoreMaxPair(Vertex<V> u) {
+        ScoreMaxPair<V> scoreMaxPair = _scoreMaxMap.get(u);
         if (scoreMaxPair == null) {
-            scoreMaxPair = new ScoreMaxPair(u, -1);
+            scoreMaxPair = new ScoreMaxPair<>(u, -1);
             setScoreMax(u, scoreMaxPair);
         }
         return scoreMaxPair;
     }
 
-    private void setScoreMax(Vertex<V> u, ScoreMaxPair newScoreMaxPair) {
+    private void setScoreMax(Vertex<V> u, ScoreMaxPair<V> newScoreMaxPair) {
         _scoreMaxMap.put(u, newScoreMaxPair);
     }
 
     private void setScoreMax(Vertex<V> u, int scoreMax) {
         Vertex<V> bestParent = getScoreMaxBestParent(u);
-        _scoreMaxMap.put(u, new ScoreMaxPair(bestParent, scoreMax));
+        _scoreMaxMap.put(u, new ScoreMaxPair<>(bestParent, scoreMax));
     }
 
     private Vertex<V> dfs(Vertex<V> u) {
@@ -276,25 +271,7 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
         _dfs.put(u, newValue);
     }
 
-//    private int getChildCloseScore(Vertex<V> vm, Vertex<V> u) {
-//        Set<Vertex<V>> uSubtree = new TreeSet<>();
-//        getSubtree(u, uSubtree);
-//        int vmNeighborsCount = (int)_graph.getNeighbors(vm).stream()
-//                .filter(uSubtree::contains)
-//                .count();
-//        return vmNeighborsCount - (uSubtree.size() - vmNeighborsCount);
-//    }
-//
-//
-//    private void getSubtree(Vertex<V> v, Set<Vertex<V>> subtree) {
-//        subtree.add(v);
-//
-//        if (v.getChildren() != null && !v.getChildren().isEmpty()) {
-//            v.getChildren().stream().forEach(c -> getSubtree(c, subtree));
-//        }
-//    }
-
-    private Graph<V, String> buildQtGraph(boolean showTransitiveClosures) {
+    protected Graph<V, String> buildQtGraph(boolean showTransitiveClosures) {
         Graph<V, String> returnGraph = new SparseGraph<>();
 
         if (showTransitiveClosures) {
@@ -323,24 +300,6 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
             Set<Vertex<V>> newAncestors = new HashSet<>(ancestors);
             newAncestors.add(v);
             v.getChildren().stream().forEach(c -> addEdges(c, newAncestors, returnGraph));
-        }
-    }
-
-    private class ScoreMaxPair {
-        private Vertex<V> _bestParent;
-        private int _scoreMax;
-
-        private ScoreMaxPair(Vertex<V> bestParent, int scoreMax) {
-            _bestParent = bestParent;
-            _scoreMax = scoreMax;
-        }
-
-        public Vertex<V> getBestParent() {
-            return _bestParent;
-        }
-
-        public int getScoreMax() {
-            return _scoreMax;
         }
     }
 }

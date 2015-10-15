@@ -1,9 +1,9 @@
 package loader;
 
-import algorithm.Edge;
-import algorithm.Vertex;
 import edu.uci.ics.jung.graph.Graph;
 import edu.uci.ics.jung.graph.SparseGraph;
+import structure.Edge;
+import structure.Vertex;
 
 import java.io.IOException;
 import java.nio.file.Files;

@@ -1,9 +1,9 @@
 package drivers;
 
-import algorithm.Edge;
-import algorithm.Vertex;
 import edu.uci.ics.jung.graph.Graph;
 import loader.GraphLoader;
+import structure.Edge;
+import structure.Vertex;
 import view.GraphViewer;
 
 import java.io.IOException;

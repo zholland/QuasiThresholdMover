@@ -1,6 +1,7 @@
-package algorithm;
+package structure;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 
 public class Vertex<T extends Comparable<T>> implements Comparable<Vertex<T>> {
     private T _id;
@@ -9,6 +10,7 @@ public class Vertex<T extends Comparable<T>> implements Comparable<Vertex<T>> {
     private int _depth = -1;
     private Vertex<T> _parent;
     private ArrayList<Vertex<T>> _children;
+    private LinkedList<Vertex<T>> _reportedChildren;
     //private int _nextChildIndex = 0;
 
     public Vertex(T id) {
@@ -61,6 +63,14 @@ public class Vertex<T extends Comparable<T>> implements Comparable<Vertex<T>> {
 
     public ArrayList<Vertex<T>> getChildren() {
         return _children;
+    }
+
+    public void reportChild(Vertex<T> child) {
+        _reportedChildren.add(child);
+    }
+
+    public LinkedList<Vertex<T>> getReportedChildren() {
+        return _reportedChildren;
     }
 
     public int getDepth() {

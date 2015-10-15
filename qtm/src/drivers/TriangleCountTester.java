@@ -1,11 +1,11 @@
 package drivers;
 
-import algorithm.Edge;
-import algorithm.TriangleCounter;
-import algorithm.Vertex;
 import edu.uci.ics.jung.graph.Graph;
 import edu.uci.ics.jung.graph.SparseGraph;
 import loader.GraphLoader;
+import structure.Edge;
+import structure.Vertex;
+import utility.TriangleCounter;
 import view.GraphViewer;
 
 import java.io.IOException;
