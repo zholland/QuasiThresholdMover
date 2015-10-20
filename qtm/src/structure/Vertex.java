@@ -27,6 +27,7 @@ public class Vertex<T extends Comparable<T>> implements Comparable<Vertex<T>> {
         _parent = parent;
         _depth = depth;
         _children = new ArrayList<>();
+        _reportedChildren = new LinkedList<>();
     }
 
     public T getId() {

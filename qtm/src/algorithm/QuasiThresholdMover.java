@@ -7,13 +7,25 @@ import structure.Vertex;
 import utility.PseudoC4P4Counter;
 import utility.TriangleCounter;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.PriorityQueue;
+import java.util.Queue;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 public class QuasiThresholdMover<V extends Comparable<V>> {
     protected PriorityQueue<Vertex<V>> _vertexQueue;
     protected Graph<Vertex<V>, Edge<String>> _graph;
     protected Vertex<V> _root;
+
+    protected Comparator<Vertex<V>> _depthComparator = (v1, v2) -> v2.getDepth() - v1.getDepth(); // I don't think there will be an overflow.
 
     protected Map<Vertex<V>, Integer> _childCloseMap;
     protected Map<Vertex<V>, Integer> _dfsNextChildIndexMap;
@@ -87,7 +99,7 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
         }
     }
 
-    private void changeParent(Vertex<V> child, Vertex<V> newParent) {
+    protected void changeParent(Vertex<V> child, Vertex<V> newParent) {
         Vertex<V> oldParent = child.getParent();
         if (oldParent != null) {
             oldParent.removeChild(child);
@@ -98,9 +110,9 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
         }
     }
 
-    private void core(Vertex<V> vm) {
+    protected void core(Vertex<V> vm) {
         int degreeVm = _graph.degree(vm);
-        Queue<Vertex<V>> queue = new PriorityQueue<>(degreeVm, (v1, v2) -> v2.getDepth() - v1.getDepth()); // I don't think there will be an overflow.
+        Queue<Vertex<V>> queue = new PriorityQueue<>(degreeVm, _depthComparator);
         queue.addAll(_graph.getNeighbors(vm));
         _dfsNextChildIndexMap = queue.stream().collect(Collectors.toMap(v -> v, v -> 0));
         _childCloseMap = queue.stream().collect(Collectors.toMap(v -> v, v -> 0));
@@ -177,7 +189,7 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
         return index;
     }
 
-    private void computeDepths(Vertex<V> v, int depth) {
+    protected void computeDepths(Vertex<V> v, int depth) {
         v.setDepth(depth);
         v.getChildren().forEach(c -> computeDepths(c, depth + 1));
     }
@@ -194,7 +206,7 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
                         ArrayList<Vertex<V>> oldChildren = vm.getChildren();
                         changeParent(vm, _root);
                         vm.setDepth(1);
-                        vm.getChildren().forEach(this::decreaseChildrenDepth);
+                        vm.getChildren().forEach(c -> adjustChildrenDepth(c, -1));
                         vm.setChildren(new ArrayList<>());
                         oldParent.getChildren().addAll(oldChildren);
                         oldChildren.forEach(c -> c.setParent(oldParent));
@@ -208,9 +220,9 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
         return buildQtGraph(showTransitiveClosures);
     }
 
-    private void decreaseChildrenDepth(Vertex<V> v) {
-        v.setDepth(v.getDepth() - 1);
-        v.getChildren().forEach(this::decreaseChildrenDepth);
+    protected void adjustChildrenDepth(Vertex<V> v, int adjustment) {
+        v.setDepth(v.getDepth() + adjustment);
+        v.getChildren().forEach(c -> adjustChildrenDepth(c, adjustment));
     }
 
     private int childClose(Vertex<V> u) {
