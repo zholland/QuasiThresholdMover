@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 public class QtmTester {
-    public static final int ITERATIONS = 100;
+    public static final int ITERATIONS = 1;
 
     private static class TimeEditsDto {
         private long _time;
@@ -39,7 +39,7 @@ public class QtmTester {
             int editsSum = 0;
             int minEdits = Integer.MAX_VALUE;
             for (int i = 0; i < ITERATIONS; i++) {
-                TimeEditsDto timeEditsDto = doMover(GraphLoader.createGraphFromFile(args[0]), timeSum);
+                TimeEditsDto timeEditsDto = doMover(GraphLoader.createGraphFromFileEdgesOnly(args[0]), timeSum);
                 timeSum += timeEditsDto.getTime();
                 editsSum += timeEditsDto.getEdits();
                 if (minEdits > timeEditsDto.getEdits()) {
@@ -58,6 +58,7 @@ public class QtmTester {
     }
 
     private static TimeEditsDto doMover(Graph<Vertex<Integer>, Edge<String>> graph, Long timeSum) {
+        System.out.println("Loaded");
         long startTime = System.nanoTime();
         QuasiThresholdMover<Integer> qtm = new QuasiThresholdMover<>(graph, Integer.MAX_VALUE);
         Graph<Integer, String> resultGraph = qtm.doQuasiThresholdMover(true);
