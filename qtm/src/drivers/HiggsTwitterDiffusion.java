@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
 import java.util.StringTokenizer;
@@ -41,6 +42,8 @@ import java.util.stream.Stream;
 public class HiggsTwitterDiffusion {
     public static final int NUMBER_OF_VERTICES = 6000;
     public static final int RESOLUTION = 20;
+    public static final int NUMBER_OF_COMPONENTS_TO_PLOT = 5;
+    public static final int MINIMUM_COMPONENT_SIZE = 30;
 
     public static void main(String[] args) {
         try {
@@ -55,6 +58,7 @@ public class HiggsTwitterDiffusion {
 
             long timeStep = difference / RESOLUTION;
 
+            System.out.println("Max time: " + maxTime);
             System.out.println("Max time - min time (seconds):" + difference);
 
             Graph<Vertex<Integer>, Edge<String>> inputGraph = createGraphFromFileEdgesOnly(args[1], includedVertices);
@@ -64,32 +68,70 @@ public class HiggsTwitterDiffusion {
             QuasiThresholdMover<Integer> qtm = new QuasiThresholdMover<>(inputGraph, Integer.MAX_VALUE);
             Graph<Integer, String> resultGraph = qtm.doQuasiThresholdMover(true);
 
-            deleteSmallComponents(resultGraph, 7);
+            PriorityQueue<Set<Integer>> connectedComponents = deleteSmallComponents(resultGraph, MINIMUM_COMPONENT_SIZE);
 
-            long currentTime = minTime + timeStep;
-            for (int i = 0; i < RESOLUTION; i++) {
-                final long time = currentTime;
-                Set<Integer> infectedNodes
-                        = dtoList.stream()
-                        .filter(dto -> dto.getTimestamp() < time)
-                        .map(HiggsActivityDto::getVertexA)
-                        .collect(Collectors.toCollection(HashSet::new));
-                infectedNodes.addAll(dtoList.stream()
-                        .filter(dto -> dto.getTimestamp() < time)
-                        .map(HiggsActivityDto::getVertexB)
-                        .collect(Collectors.toList()));
+            createGraphMLs(resultGraph, "output", minTime, timeStep, dtoList, args[2]);
 
-                graphToGraphMLFile(resultGraph, args[2], i);
-                colorGraphNodes(args[2], i, infectedNodes);
-
-                currentTime += timeStep;
+            for (int i = 0; i < NUMBER_OF_COMPONENTS_TO_PLOT; i++) {
+                Graph<Integer, String> componentGraph = createGraphOfComponent(resultGraph, connectedComponents.poll());
+                createGraphMLs(componentGraph, "component" + i + "_", minTime, timeStep, dtoList, args[2]);
             }
+
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public static void deleteSmallComponents(Graph<Integer, String> graph, int minComponentSize) {
+    private static Graph<Integer, String> createGraphOfComponent(Graph<Integer, String> resultGraph,
+                                                                 Set<Integer> verticesInComponent) {
+        Graph<Integer, String> componentGraph = new SparseGraph<>();
+
+        verticesInComponent.forEach(componentGraph::addVertex);
+
+        Integer[] vertexArray = new Integer[verticesInComponent.size()];
+        vertexArray = verticesInComponent.toArray(vertexArray);
+
+        for (int i = 0; i < vertexArray.length; i++) {
+            for (int j = i; j < vertexArray.length; j++) {
+                if (resultGraph.containsEdge(vertexArray[i] + "-" + vertexArray[j])
+                        || resultGraph.containsEdge(vertexArray[j] + "-" + vertexArray[i])) {
+                    componentGraph.addEdge(vertexArray[i] + "-" + vertexArray[j], vertexArray[i], vertexArray[j]);
+                }
+            }
+        }
+
+        return componentGraph;
+    }
+
+    private static void createGraphMLs(Graph<Integer, String> resultGraph,
+                                       String outputFilename,
+                                       long minTime,
+                                       long timeStep,
+                                       ArrayList<HiggsActivityDto> dtoList,
+                                       String fileOutputFolder) {
+        long currentTime = minTime + timeStep;
+        for (int i = 0; i < RESOLUTION; i++) {
+            final long time = currentTime;
+            Set<Integer> infectedNodes
+                    = dtoList.stream()
+                    .filter(dto -> dto.getTimestamp() < time)
+                    .map(HiggsActivityDto::getVertexA)
+                    .collect(Collectors.toCollection(HashSet::new));
+            infectedNodes.addAll(dtoList.stream()
+                    .filter(dto -> dto.getTimestamp() < time)
+                    .map(HiggsActivityDto::getVertexB)
+                    .collect(Collectors.toList()));
+
+            graphToGraphMLFile(resultGraph, fileOutputFolder, outputFilename, i);
+            colorGraphNodes(fileOutputFolder, outputFilename, i, infectedNodes);
+
+            currentTime += timeStep;
+        }
+    }
+
+    public static PriorityQueue<Set<Integer>> deleteSmallComponents(Graph<Integer, String> graph, int minComponentSize) {
+        PriorityQueue<Set<Integer>> pq = new PriorityQueue<>((Set<Integer> s1, Set<Integer> s2) -> s2.size() - s1.size());
+
         Set<Integer> toVisit = new HashSet<>(graph.getVertexCount());
         toVisit.addAll(graph.getVertices());
 
@@ -111,12 +153,14 @@ public class HiggsTwitterDiffusion {
             if (currentComponent.size() < minComponentSize) {
                 currentComponent.forEach(graph::removeVertex);
             }
+            pq.add(currentComponent);
             currentComponent = new HashSet<>();
         }
+        return pq;
     }
 
-    public static void colorGraphNodes(String fileDirectory, int iteration, Set<Integer> verticesToColor) {
-        String filepath = fileDirectory + "output" + iteration + ".graphml";
+    public static void colorGraphNodes(String fileDirectory, String outputFilename, int iteration, Set<Integer> verticesToColor) {
+        String filepath = fileDirectory + outputFilename + iteration + ".graphml";
         DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
         try {
             DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
@@ -171,18 +215,18 @@ public class HiggsTwitterDiffusion {
             StreamResult result = new StreamResult(new File(filepath));
             transformer.transform(source, result);
 
-            System.out.println("Done");
+            System.out.println(outputFilename + iteration + ".graphml created");
 
         } catch (ParserConfigurationException | IOException | SAXException | TransformerException e) {
             e.printStackTrace();
         }
     }
 
-    public static void graphToGraphMLFile(Graph<Integer, String> graph, String outputDirectory, int iteration) {
+    public static void graphToGraphMLFile(Graph<Integer, String> graph, String outputDirectory, String outputFilename, int iteration) {
         PrintWriter out = null;
         try {
             GraphMLWriter<Integer, String> graphWriter = new GraphMLWriter<>();
-            out = new PrintWriter(new BufferedWriter(new FileWriter(outputDirectory + "output" + iteration + ".graphml")));
+            out = new PrintWriter(new BufferedWriter(new FileWriter(outputDirectory + outputFilename + iteration + ".graphml")));
             graphWriter.save(graph, out);
         } catch (IOException e) {
             e.printStackTrace();
