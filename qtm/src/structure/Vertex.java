@@ -11,7 +11,6 @@ public class Vertex<T extends Comparable<T>> implements Comparable<Vertex<T>> {
     private Vertex<T> _parent;
     private ArrayList<Vertex<T>> _children;
     private LinkedList<Vertex<T>> _reportedChildren;
-    //private int _nextChildIndex = 0;
 
     public Vertex(T id) {
         this(id, -1);
@@ -81,18 +80,6 @@ public class Vertex<T extends Comparable<T>> implements Comparable<Vertex<T>> {
     public void setDepth(int depth) {
         _depth = depth;
     }
-
-//    public void setNextChildIndex(int i) {
-//        _nextChildIndex = i;
-//    }
-//
-//    public int getNextChildIndex() {
-//        return _nextChildIndex;
-//    }
-
-//    public int getNextChildIndexAndIncrement() {
-//        return _nextChildIndex++;
-//    }
 
     @Override
     public boolean equals(Object other) {
