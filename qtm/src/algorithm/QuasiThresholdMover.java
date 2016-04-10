@@ -2,6 +2,7 @@ package algorithm;
 
 import edu.uci.ics.jung.graph.Graph;
 import edu.uci.ics.jung.graph.SparseGraph;
+import edu.uci.ics.jung.graph.util.Pair;
 import structure.Edge;
 import structure.Vertex;
 import utility.PseudoC4P4Counter;
@@ -17,6 +18,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.Queue;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -24,7 +26,9 @@ import java.util.stream.Collectors;
 public class QuasiThresholdMover<V extends Comparable<V>> {
     protected PriorityQueue<Vertex<V>> _vertexQueue;
     protected Graph<Vertex<V>, Edge<String>> _graph;
+    protected Graph<Vertex<V>, Edge<String>> _originalGraph;
     protected Vertex<V> _root;
+    protected Random _random;
 
     protected Comparator<Vertex<V>> _depthComparator = (v1, v2) -> v2.getDepth() - v1.getDepth(); // I don't think there will be an overflow.
 
@@ -34,11 +38,24 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
     protected Map<Vertex<V>, Vertex<V>> _bestParentMap;
 
     public QuasiThresholdMover(Graph<Vertex<V>, Edge<String>> graph, V root) {
+        _random = new Random();
         _graph = graph;
         _root = new Vertex<>(root, graph.getVertexCount(), null, 0);
+        _originalGraph = new SparseGraph<>();
+        graph.getVertices().stream().forEach(v -> _originalGraph.addVertex(v));
+        graph.getEdges().stream().forEach(e -> {
+            Pair<Vertex<V>> endpoints = graph.getEndpoints(e);
+            _originalGraph.addEdge(new Edge<>(endpoints.getFirst().getId() + "-" + endpoints.getSecond()), endpoints.getFirst(), endpoints.getSecond());
+        });
+//        _originalGraph.addVertex(_root);
+//        _originalGraph.getVertices().stream()
+//                .filter(v -> !_root.equals(v))
+//                .forEach(v -> _originalGraph.addEdge(new Edge<>(_root.getId() + "-" + v.getId()), _root, v));
     }
 
     protected void initialize() {
+        long startTime = System.nanoTime();
+
         // TODO: Use bucket-sort
         _vertexQueue = new PriorityQueue<>((v1, v2) -> v2.getDegree() - v1.getDegree());
 
@@ -66,10 +83,10 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
             processed.add(current);
 
             TreeSet<Vertex<V>> neighbors = _graph.getNeighbors(current).stream()
-                    .filter(v -> !processed.contains(v) && (Objects.equals(current.getParent(), v.getParent())
-                            || (pc.score(current, v) <= pc.score(v, v.getParent())
-                            && v.getDepth() <= _graph.findEdge(v, current).getNumTriangles() + 1)))
-                    .collect(Collectors.toCollection(TreeSet::new));
+                                                   .filter(v -> !processed.contains(v) && (Objects.equals(current.getParent(), v.getParent())
+                                                                                                   || (pc.score(current, v) <= pc.score(v, v.getParent())
+                                                                                                               && v.getDepth() <= _graph.findEdge(v, current).getNumTriangles() + 1)))
+                                                   .collect(Collectors.toCollection(TreeSet::new));
 
             Map<Vertex<V>, Integer> parentOccurrences = new HashMap<>();
             neighbors.stream().map(Vertex::getParent).forEach(p -> {
@@ -92,12 +109,15 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
             _graph.getNeighbors(current).stream()
                     .filter(v -> !processed.contains(v))
                     .filter(v -> Objects.equals(current.getParent(), v.getParent())
-                            || (pc.score(current, v) < pc.score(v, v.getParent()) && v.getDepth() < _graph.findEdge(current, v).getNumTriangles() + 1))
+                                         || (pc.score(current, v) < pc.score(v, v.getParent())
+                                                     && v.getDepth() < _graph.findEdge(current, v).getNumTriangles() + 1))
                     .forEach(v -> {
                         changeParent(v, current);
                         v.setDepth(v.getDepth() + 1);
                     });
         }
+        long endTime = System.nanoTime();
+//        System.out.println((double)(endTime - startTime) / 1000000d);
     }
 
     protected void changeParent(Vertex<V> child, Vertex<V> newParent) {
@@ -173,9 +193,10 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
         initialize();
         computeDepths(_root, 0);
         ArrayList<Vertex<V>> vertices = _graph.getVertices().stream()
-                .filter(vm -> vm != _root)
-                .collect(Collectors.toCollection(ArrayList::new));
-        for (int i = 0; i < 4; i++) {
+                                                .filter(vm -> vm != _root)
+                                                .collect(Collectors.toCollection(ArrayList::new));
+        for (int i = 0; i < 10; i++) {
+            long startTime = System.nanoTime();
             Collections.shuffle(vertices);
             vertices.forEach(vm -> {
                 Vertex<V> oldParent = vm.getParent();
@@ -199,8 +220,13 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
                     childrenToAdopt.forEach(c -> c.setParent(vm));
                 }
             });
+            long endTime = System.nanoTime();
+//            if (i==3) {
+//                System.out.println((double) (endTime - startTime) / 1000000d);
+//            }
+//            System.out.println("Edits (iteration " + (i + 1) + "): " + GraphEditCounter.numberOfEditsAfterFinished(_originalGraph, buildQtGraph(true, false)));
         }
-        return buildQtGraph(showTransitiveClosures);
+        return buildQtGraph(showTransitiveClosures, true);
     }
 
     protected void adjustChildrenDepth(Vertex<V> v, int adjustment) {
@@ -221,7 +247,7 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
         _childCloseMap.put(u, newChildClose);
     }
 
-    protected Graph<V, String> buildQtGraph(boolean showTransitiveClosures) {
+    protected Graph<V, String> buildQtGraph(boolean showTransitiveClosures, boolean finalGraph) {
         Graph<V, String> returnGraph = new SparseGraph<>();
 
         if (showTransitiveClosures) {
@@ -240,7 +266,9 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
                         }
                     });
         }
-        _graph.removeVertex(_root);
+        if (finalGraph) {
+            _graph.removeVertex(_root);
+        }
         return returnGraph;
     }
 
