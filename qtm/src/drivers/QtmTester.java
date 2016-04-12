@@ -75,7 +75,7 @@ public class QtmTester {
 //        System.out.println("Loaded");
         long startTime = System.nanoTime();
         QuasiThresholdMover<Integer> qtm = new QuasiThresholdMover<>(graph, Integer.MAX_VALUE);
-        Graph<Integer, String> resultGraph = qtm.doQuasiThresholdMover(true);
+        Graph<Integer, String> resultGraph = qtm.doQuasiThresholdMover(true, true);
         long endTime = System.nanoTime();
 
         int edits = GraphEditCounter.numberOfEditsAfterFinished(graph, resultGraph);
