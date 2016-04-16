@@ -32,11 +32,11 @@ import java.util.stream.Collectors;
 public class QuasiThresholdMover<V extends Comparable<V>> {
 
     // The number of iterations to run the algorithm.
-    public static final int ITERATIONS = 10;
+    public static final int ITERATIONS = 5;
 
     // If simulated annealing is enabled, this determines the number of iterations that have a probability of
     // making a sub-optimal choice.
-    public static final int ANNEALING_ITERATIONS = 5;
+    public static final int ANNEALING_ITERATIONS = 0;
 
     // The initial probability of making a sub-optimal choice if simulated annealing is enabled.
     public static final double INITIAL_SUB_OPTIMAL_CHOICE_PROBABILITY = 0.1;
@@ -198,6 +198,7 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
         queue.addAll(_graph.getVertices());
 
 
+        // Initialize the maps for child closeness, score_max, best parent, and the set of close children.
         Map<Vertex<V>, Integer> childCloseMap = new HashMap<>();
         Map<Vertex<V>, Integer> scoreMaxMap = new HashMap<>();
         _bestParentMap = new HashMap<>();
@@ -208,11 +209,14 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
 
             int childCloseSum = 0;
             int childCloseSumOverCloseChildren = 0;
+
             Vertex<V> potentialBestChild = null;
             int potentialScoreMax = -1;
 
             for (Vertex<V> c : v.getChildren()) {
                 int childCloseC = childCloseMap.get(c);
+
+                // If the child closeness of c is greater than 0, add it to the set of close children for v.
                 if (childCloseC > 0) {
                     Set<Vertex<V>> closeChildren = _closeChildren.get(v);
                     if (closeChildren == null) {
@@ -220,10 +224,14 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
                     }
                     closeChildren.add(c);
                     _closeChildren.put(v, closeChildren);
+                    // Increment the sum over all close children
                     childCloseSumOverCloseChildren += childCloseC;
                 }
+                // Increment the sum over all children
                 childCloseSum += childCloseC;
 
+                // if score_max(c) is better than the current potential score_max,
+                // save the child and the score_max.
                 int scoreMaxC = scoreMaxMap.get(c);
                 if (scoreMaxC > potentialScoreMax) {
                     potentialScoreMax = scoreMaxC;
@@ -231,7 +239,12 @@ public class QuasiThresholdMover<V extends Comparable<V>> {
                 }
             }
 
+            // Save the child closeness score of v.
             childCloseMap.put(v, childCloseSum + diff(vm, v));
+
+            // If the score_max(potentialBestChild) is greater than the sum of the child closeness of all the close
+            // children then save it as the best parent in the subtree rooted at v. Otherwise, the best parent
+            // in the subtree rooted at v is v.
             if (potentialScoreMax > childCloseSumOverCloseChildren) {
                 scoreMaxMap.put(v, potentialScoreMax + diff(vm, v));
                 _bestParentMap.put(v, _bestParentMap.get(potentialBestChild));
