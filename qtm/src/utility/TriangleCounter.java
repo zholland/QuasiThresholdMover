@@ -66,8 +66,8 @@ public class TriangleCounter<T extends Comparable<T>> {
      * Triangle-Based Network Analysis"
      * URL: digbib.ubka.uni-karlsruhe.de/valltexte/documents/4541
      *
-     * @param graph
-     * @param <V>
+     * @param graph The graph to count all of the triangles in.
+     * @param <V>   The id type of the vertices.
      */
     public static <V extends Comparable<V>> void countAllTriangles(Graph<Vertex<V>, Edge<String>> graph) {
         // Get the set of vertices sorted by descending degree.
