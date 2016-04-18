@@ -20,6 +20,8 @@ import java.util.stream.Stream;
 
 /**
  * Utility class that provides methods to load a graph from a file into a JUNG graph.
+ *
+ * @author Zach Holland
  */
 public class GraphLoader {
 

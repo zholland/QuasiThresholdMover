@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
  * or using the static countAllTriangles method.
  *
  * @param <T> The id type of the Vertex object used in the Graph.
+ * @author Zach Holland
  */
 public class TriangleCounter<T extends Comparable<T>> {
 

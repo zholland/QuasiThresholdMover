@@ -28,10 +28,11 @@ import java.util.stream.Collectors;
  * QuasiThresholdMover object, then evoking the method doQuasiThresholdMover.
  *
  * @param <V> The id type of the vertex object.
+ * @author Zach Holland
  */
 public class QuasiThresholdMover<V extends Comparable<V>> {
 
-    // The number of iterations to run the algorithm.
+    // The total number of iterations to run the algorithm.
     public static final int ITERATIONS = 5;
 
     // If simulated annealing is enabled, this determines the number of iterations that have a probability of

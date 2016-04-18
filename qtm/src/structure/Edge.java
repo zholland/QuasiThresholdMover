@@ -4,6 +4,7 @@ package structure;
  * Represents an edge in a graph.
  *
  * @param <T> The type of the id of the edge.
+ * @author Zach Holland
  */
 public class Edge<T> {
     private T _id;

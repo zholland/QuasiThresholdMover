@@ -41,7 +41,7 @@ public class QtmTester {
             int editsSum = 0;
             int minEdits = Integer.MAX_VALUE;
             for (int i = 0; i < ITERATIONS; i++) {
-                TimeEditsDto timeEditsDto = doMover(GraphLoader.createGraphFromFile("/home/zach/IdeaProjects/QuasiThresholdMover/qtm/graphs/football.paj"), timeSum);
+                TimeEditsDto timeEditsDto = doMover(GraphLoader.createGraphFromFile("/home/zach/IdeaProjects/QuasiThresholdMover/qtm/graphs/karate.paj"), timeSum);
                 timeSum += timeEditsDto.getTime();
                 editsSum += timeEditsDto.getEdits();
                 numEditsList.add(timeEditsDto.getEdits());
@@ -75,7 +75,7 @@ public class QtmTester {
 //        System.out.println("Loaded");
         long startTime = System.nanoTime();
         QuasiThresholdMover<Integer> qtm = new QuasiThresholdMover<>(graph, Integer.MAX_VALUE);
-        Graph<Integer, String> resultGraph = qtm.doQuasiThresholdMover(true, true);
+        Graph<Integer, String> resultGraph = qtm.doQuasiThresholdMover(true, false);
         long endTime = System.nanoTime();
 
         int edits = GraphEditCounter.numberOfEditsAfterFinished(graph, resultGraph);

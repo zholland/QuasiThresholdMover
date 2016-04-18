@@ -7,6 +7,7 @@ import java.util.LinkedList;
  * Represents a vertex in a graph.
  *
  * @param <T> The type of the id.
+ * @author Zach Holland
  */
 public class Vertex<T extends Comparable<T>> implements Comparable<Vertex<T>> {
     private T _id;

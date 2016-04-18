@@ -13,6 +13,7 @@ import java.util.Set;
  * it should be deleted in the initialization portion of the algorithm.
  *
  * @param <V> The id type of the vertices.
+ * @author Zach Holland
  */
 public class PseudoC4P4Counter<V extends Comparable<V>> {
     private Graph<Vertex<V>, Edge<String>> _graph;

@@ -13,6 +13,8 @@ import java.util.stream.Collectors;
 
 /**
  * Provides some utility methods to compare the number of edits between two graphs.
+ *
+ * @author Zach Holland
  */
 public class GraphEditCounter {
 
